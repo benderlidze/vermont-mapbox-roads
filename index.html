@@ -1,1 +1,445 @@
-123
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Add a raster image to a map layer</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+    <!-- Load the `mapbox-gl-geocoder` plugin. -->
+    <script
+        src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+    <link rel="stylesheet"
+        href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css"
+        type="text/css">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        #filters {
+            background-color: white;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            border-radius: 20px;
+            z-index: 10;
+            padding: 10px;
+        }
+
+        .switcher-div {
+            display: flex;
+            align-items: center;
+            margin: 5px;
+        }
+
+        .switcher-div>div {
+            margin-left: 5px;
+        }
+
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 35px;
+            height: 15px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            -webkit-transition: 0.4s;
+            transition: 0.4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 11px;
+            width: 11px;
+            left: 3px;
+            bottom: 2px;
+            background-color: white;
+            -webkit-transition: 0.4s;
+            transition: 0.4s;
+        }
+
+        input:checked+.slider {
+            background-color: #2196f3;
+        }
+
+        input:focus+.slider {
+            box-shadow: 0 0 1px #2196f3;
+        }
+
+        input:checked+.slider:before {
+            -webkit-transform: translateX(18px);
+            -ms-transform: translateX(18px);
+            transform: translateX(18px);
+        }
+
+        /* Rounded sliders */
+        .slider.round {
+            border-radius: 34px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        #loading {
+            background-color: white;
+            position: absolute;
+            border-radius: 10px;
+            z-index: 10;
+            padding: 20px;
+            font-size: 20px;
+
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading">Loading data...</div>
+    <div id="filters"></div>
+    <div id="map"></div>
+    <script>
+
+        const switchersEnableDiv = document.getElementById("filters")
+        const loading = document.getElementById("loading")
+
+        mapboxgl.accessToken = 'pk.eyJ1IjoidnRkaXJ0IiwiYSI6ImNqa2l1dnAyeDE5NDUzcXM2NGJ1azB4bWkifQ.NZPAmWBznveUQa6ytjRlGg';
+        const map = new mapboxgl.Map({
+            container: 'map', // container ID
+            // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
+            style: 'mapbox://styles/vtdirt/clinhb9oi01d101p74ydt3d74', // style URL
+            center: { lng: -72.68370409342498, lat: 43.79364645585602 }, // starting position
+            zoom: 7.7, // starting zoom
+            projection: "mercator"
+        });
+
+        // Add the control to the map.
+        map.addControl(
+            new MapboxGeocoder({
+                accessToken: mapboxgl.accessToken,
+                mapboxgl: mapboxgl
+            })
+        );
+
+        const main = {
+            data: [],
+            filters: new Set()
+        };
+
+        const colorArray = ['#FFFF99', '#00B3E6',
+            '#E6B333', '#3366E6', '#999966', '#99FF99', '#B34D4D',
+            '#80B300', '#809900', '#E6B3B3', '#6680B3', '#66991A',
+            '#FF99E6', '#CCFF1A', '#FF1A66', '#E6331A', '#33FFCC',
+            '#66994D', '#B366CC', '#4D8000', '#B33300', '#CC80CC',
+            '#66664D', '#991AFF', '#E666FF', '#4DB3FF', '#1AB399',
+            '#E666B3', '#33991A', '#CC9999', '#B3B31A', '#00E680',
+            '#4D8066', '#809980', '#E6FF80', '#1AFF33', '#999933',
+            '#FF3380', '#CCCC00', '#66E64D', '#4D80CC', '#9900B3',
+            '#E64D66', '#4DB380', '#FF4D4D', '#99E6E6', '#6666FF'];
+
+        map.on('load', () => {
+
+            map.addLayer({
+                id: 'satellite',
+                source: { "type": "raster", "url": "mapbox://mapbox.satellite", "tileSize": 256 },
+                type: "raster",
+                layout: {
+                    visibility: 'none'
+                }
+            });
+
+            const fieldsToDisplay = [
+                'Project No.',
+                'Company',
+            ]
+
+            const files = [
+                // { name: "Class 4 roads", url: "data/class4-roads.geojson", color: "red", type: "fill" },
+                // { name: "Dirt", url: "data/dirt.geojson", color: "blue", type: "line" },
+                // { name: "Gravel", url: "data/gravel.geojson", color: "green", type: "line" },
+                // { name: "impassable", url: "data/impassable.geojson", color: "orange", type: "line" },
+                // { name: "primitive", url: "data/primitive.geojson", color: "purple", type: "line" },
+                { name: "Boundaries", url: "data/Vermont-Town-Boundaries.geojson", color: "red", type: "line" },
+            ]
+
+            Promise.all(
+                files.map(d => fetch(d.url).then(res => res.json()))
+            ).then(arr => {
+
+                const layers = arr.map((json, key) => {
+                    const layerName = files[key].name
+                    const color = files[key].color
+
+                    console.log('json', json);
+
+                    const layer = addLayer(layerName, json, color)
+                    console.log('layer', layer);
+                    switchersEnableDiv.appendChild(buildSwitcher(layerName, checked => {
+                        const visibility = checked ? "visible" : "none"
+                        map.setLayoutProperty(layer.fillNameId, "visibility", visibility)
+                        map.setLayoutProperty(layer.outlineNameId, "visibility", visibility)
+                    }, color, true))
+
+                })
+
+                loading.style.display = "none"
+            })
+
+
+            //SURFACETYPE
+            const layouts = [
+                "road-pavement",
+                "road-dirt",
+                "road-class4",
+                "road-discontinued-primative-legal-trail"
+            ]
+
+            layouts.forEach(layout => {
+
+                const visibility = !!map.getLayoutProperty(layout, "visibility") ? false : true
+                console.log('visibility', visibility);
+
+                switchersEnableDiv.appendChild(buildSwitcher(layout, checked => {
+                    const visibility = checked ? "visible" : "none"
+                    map.setLayoutProperty(layout, "visibility", visibility)
+                }, "black", visibility))
+
+            })
+
+
+            // switchersEnableDiv.appendChild(buildSwitcher("road-pavement", checked => {
+            //     const visibility = checked ? "visible" : "none"
+            //     map.setLayoutProperty("road-pavement", "visibility", visibility)
+            // }, "black", true))
+            // switchersEnableDiv.appendChild(buildSwitcher("road-dirt", checked => {
+            //     const visibility = checked ? "visible" : "none"
+            //     map.setLayoutProperty("road-dirt", "visibility", visibility)
+            // }, "brown", true))
+            // switchersEnableDiv.appendChild(buildSwitcher("road-class4", checked => {
+            //     const visibility = checked ? "visible" : "none"
+            //     map.setLayoutProperty("road-class4", "visibility", visibility)
+            // }, "blue", true))
+            // switchersEnableDiv.appendChild(buildSwitcher("road-discontinued-primative-legal-trail", checked => {
+            //     const visibility = checked ? "visible" : "none"
+            //     map.setLayoutProperty("road-discontinued-primative-legal-trail", "visibility", visibility)
+            // }, "orange", true))
+
+            // switchersEnableDiv.appendChild(buildSwitcher("SURFACETYPE 1", checked => {
+            //     const visibility = checked ? "visible" : "none"
+            //     map.setFilter('road-discontinued-primative-legal-trail', ['==', 'SURFACETYPE', '1']);
+            // }, "orange", true))
+
+
+
+            map.on('click', 'main', (e) => {
+                // Copy coordinates array.
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                const data = e.features[0].properties;
+
+                // Ensure that if the map is zoomed out such that multiple
+                // copies of the feature are visible, the popup appears
+                // over the copy being pointed to.
+                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                }
+                console.log('data', data);
+
+                const fields = fieldsToDisplay.map(d => {
+                    if (data[d]) {
+                        return `<div>${d}: ${data[d]}</div>`
+                    }
+                    return ""
+                }).join("")
+
+                const description = `<div>${fields}</div>`
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(description)
+                    .addTo(map);
+            });
+
+            map.on('mousemove', 'main', e => {
+                map.getCanvas().style.cursor = 'pointer';
+            })
+
+            map.on('mouseleave', 'main', () => {
+                map.getCanvas().style.cursor = '';
+            });
+
+        });
+
+        // switchersEnableDiv.appendChild(buildSwitcher("Satellite", checked => {
+        //     const display = checked ? "visible" : "none"
+        //     map.setLayoutProperty('satellite', 'visibility', display);
+        // }, false, false))
+
+        function addLayer(layerName, data, color) {
+
+            const fillNameId = 'fill_' + layerName
+            const outlineNameId = 'outline_' + layerName
+
+            map.addSource(layerName, {
+                'type': 'geojson',
+                'data': data
+            });
+            map.addLayer({
+                'id': fillNameId,
+                'type': 'fill',
+                'source': layerName,
+                'layout': {
+                    'visibility': 'visible'
+                },
+                'paint': {
+                    'fill-color': color,
+                    'fill-opacity': 0.2
+                },
+                'filter': ['==', '$type', "Polygon"]
+            });
+            // Add a black outline around the polygon.
+            map.addLayer({
+                'id': outlineNameId,
+                'type': 'line',
+                'source': layerName,
+                'layout': {
+                    'visibility': 'visible'
+                },
+                'paint': {
+                    'line-color': color,
+                    'line-width': 3
+                },
+                'filter': ['==', '$type', "LineString"]
+            });
+
+            return {
+                fillNameId,
+                outlineNameId
+            }
+        }
+
+        function filterData() {
+            const pins = main.data.filter(pin => {
+                const filter = Array.from(main.filters)
+                return filter.includes(pin.properties.type)
+            })
+            map.getSource("main").setData(turf.featureCollection(pins))
+        }
+
+
+        function buildSwitcher(labelText, action, colorCircle, checked = true) {
+
+            const div = document.createElement("div")
+            div.className = "switcher-div"
+
+            const label = document.createElement("label")
+            label.className = "switch"
+
+            const checkbox = document.createElement("input")
+            checkbox.type = "checkbox"
+            checkbox.checked = checked
+            checkbox.addEventListener("input", () => {
+                if (typeof action === "function") {
+                    action(checkbox.checked)
+                }
+            })
+
+            const color = document.createElement("div")
+            color.style.width = "10px"
+            color.style.height = "10px"
+            color.style.backgroundColor = colorCircle
+            color.style.borderRadius = "10px"
+            color.style.border = "1px solid #2196f3"
+
+
+            const span = document.createElement("span")
+            span.className = "slider round"
+
+            const text = document.createElement("div")
+            text.innerText = labelText
+
+            label.appendChild(checkbox)
+            label.appendChild(span)
+
+            div.appendChild(label)
+            if (colorCircle) div.appendChild(color)
+            div.appendChild(text)
+
+            return div
+        }
+
+    </script>
+
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+</body>
+
+</html>
