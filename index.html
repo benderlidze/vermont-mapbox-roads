@@ -132,6 +132,19 @@
     <div id="filters"></div>
     <div id="map"></div>
     <script>
+        /*
+        tippecanoe \
+        --buffer=0 \
+        --no-duplication \
+        --no-clipping \
+        --base-zoom=14 \
+        --maximum-zoom=14 \
+        --minimum-zoom=7 \
+        --no-feature-limit \
+        --no-tile-size-limit \
+        --no-line-simplification \
+        -o output1.mbtiles --force \ VT_Road_Centerline.geojson
+        */
 
         const switchersEnableDiv = document.getElementById("filters")
         const loading = document.getElementById("loading")
@@ -219,12 +232,8 @@
             })
 
 
-            //SURFACETYPE
             const layouts = [
-                "road-pavement",
-                "road-dirt",
-                "road-class4",
-                "road-discontinued-primative-legal-trail"
+                "verified-class-4-roads"
             ]
 
             layouts.forEach(layout => {
@@ -298,6 +307,36 @@
             map.on('mouseleave', 'main', () => {
                 map.getCanvas().style.cursor = '';
             });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            //TEST LAYER
+            // map.addSource('test', {
+            //     'type': 'geojson',
+            //     'data': "data/VT.geojson",
+            // });
+
+            // // Add a black outline around the polygon.
+            // map.addLayer({
+            //     'id': 'test',
+            //     'type': 'line',
+            //     'source': 'test',
+            //     'paint': {
+            //         'line-color': 'red',
+            //         'line-width': 1
+            //     },
+            // });
 
         });
 
