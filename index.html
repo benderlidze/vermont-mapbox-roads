@@ -237,15 +237,12 @@
             ]
 
             layouts.forEach(layout => {
-
                 const visibility = !!map.getLayoutProperty(layout, "visibility") ? false : true
                 console.log('visibility', visibility);
-
                 switchersEnableDiv.appendChild(buildSwitcher(layout, checked => {
                     const visibility = checked ? "visible" : "none"
                     map.setLayoutProperty(layout, "visibility", visibility)
                 }, "black", visibility))
-
             })
 
 
@@ -271,7 +268,33 @@
             //     map.setFilter('road-discontinued-primative-legal-trail', ['==', 'SURFACETYPE', '1']);
             // }, "orange", true))
 
+            map.on('click', (e) => {
 
+                console.log('e', e);
+                const features = map.queryRenderedFeatures(e.point);
+
+                const data = features.filter(l => l.layer.id === 'verified-class-4-roads')
+
+                // Print the features to the console
+                console.log(features);
+                console.log(data);
+
+                if (data && data[0]) {
+                    const props = data[0].properties
+
+                    const div = Object.entries(props).map(d => {
+                        return `<div><b>${d[0]}</b>: ${d[1]}</div>`
+                    }).join("")
+
+                    const description = `<div>
+                            ${div}        
+                        </div>`
+                    new mapboxgl.Popup()
+                        .setLngLat(e.lngLat)
+                        .setHTML(description)
+                        .addTo(map);
+                }
+            })
 
             map.on('click', 'main', (e) => {
                 // Copy coordinates array.
