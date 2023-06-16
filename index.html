@@ -124,6 +124,48 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
+
+
+        .ring-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* border: 1px solid red; */
+        }
+
+        .circle {
+            width: 14px;
+            height: 14px;
+            background-color: red;
+            border-radius: 50%;
+        }
+
+        .ringring {
+            border: 3px solid red;
+            -webkit-border-radius: 30px;
+            height: 24px;
+            width: 24px;
+            position: absolute;
+            -webkit-animation: pulsate 1s ease-out;
+            -webkit-animation-iteration-count: infinite;
+            opacity: 0.0
+        }
+
+        @-webkit-keyframes pulsate {
+            0% {
+                -webkit-transform: scale(0.1, 0.1);
+                opacity: 0.0;
+            }
+
+            50% {
+                opacity: 1.0;
+            }
+
+            100% {
+                -webkit-transform: scale(1.2, 1.2);
+                opacity: 0.0;
+            }
+        }
     </style>
 </head>
 
@@ -159,6 +201,8 @@
             projection: "mercator"
         });
 
+
+
         // Add the control to the map.
         map.addControl(
             new MapboxGeocoder({
@@ -184,6 +228,25 @@
             '#E64D66', '#4DB380', '#FF4D4D', '#99E6E6', '#6666FF'];
 
         map.on('load', () => {
+
+            //user location
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const el = document.createElement('div');
+                    el.innerHTML = `
+                    <div class="ring-container">
+                        <div class="ringring"></div>
+                        <div class="circle"></div>
+                    </div>
+                    `;
+                    new mapboxgl.Marker(el)
+                        .setLngLat([position.coords.longitude, position.coords.latitude])
+                        .setPopup(new mapboxgl.Popup({ offset: 25 })
+                            .setHTML(`<h3>Your position</h3>`)
+                        )
+                        .addTo(map);
+                });
+            }
 
             map.addLayer({
                 id: 'satellite',
