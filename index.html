@@ -35,9 +35,24 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            border-radius: 20px;
+            border-radius: 10px;
             z-index: 10;
             padding: 10px;
+            width: 250px;
+        }
+
+        #info {
+            background-color: white;
+            position: absolute;
+            top: 75px;
+            left: 20px;
+            border-radius: 10px;
+            z-index: 10;
+            padding: 10px;
+            width: 250px;
+            transition: max-height 1s;
+            overflow: hidden;
+            max-height: 600px;
         }
 
         .switcher-div {
@@ -125,6 +140,11 @@
             transform: translate(-50%, -50%);
         }
 
+        h1 {
+            padding: 0;
+            margin: 5px;
+        }
+
 
         .ring-container {
             display: flex;
@@ -166,12 +186,50 @@
                 opacity: 0.0;
             }
         }
+
+        .close {
+            position: absolute;
+            right: 12px;
+            top: 12px;
+            width: 32px;
+            height: 16px;
+            opacity: 0.3;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            opacity: 1;
+        }
+
+        .close:before,
+        .close:after {
+            position: absolute;
+            left: 15px;
+            content: ' ';
+            height: 15px;
+            width: 2px;
+            background-color: #333;
+        }
+
+        .close:before {
+            transform: rotate(45deg);
+        }
+
+        .close:after {
+            transform: rotate(-45deg);
+        }
     </style>
 </head>
 
 <body>
     <div id="loading">Loading data...</div>
     <div id="filters"></div>
+    <div id="info">
+        <h1>About map</h1>
+        <div id="close" class="close"></div>
+        general txt about Vermont roads and the certain kind of classifications, and explain the different
+        functionality of the map
+    </div>
     <div id="map"></div>
     <script>
         /*
@@ -190,6 +248,13 @@
 
         const switchersEnableDiv = document.getElementById("filters")
         const loading = document.getElementById("loading")
+        const infoDiv = document.getElementById("info")
+        const closeInfoDiv = document.getElementById("close")
+        closeInfoDiv.addEventListener("click", () => {
+            //            infoDiv.style.opacity = 0
+            infoDiv.style.display = "none"
+        })
+
 
         mapboxgl.accessToken = 'pk.eyJ1IjoidnRkaXJ0IiwiYSI6ImNqa2l1dnAyeDE5NDUzcXM2NGJ1azB4bWkifQ.NZPAmWBznveUQa6ytjRlGg';
         const map = new mapboxgl.Map({
@@ -296,7 +361,7 @@
 
 
             const layouts = [
-                "verified-class-4-roads"
+                "verified-class-4-medium"
             ]
 
             layouts.forEach(layout => {
@@ -307,7 +372,6 @@
                     map.setLayoutProperty(layout, "visibility", visibility)
                 }, "black", visibility))
             })
-
 
             // switchersEnableDiv.appendChild(buildSwitcher("road-pavement", checked => {
             //     const visibility = checked ? "visible" : "none"
@@ -336,7 +400,7 @@
                 console.log('e', e);
                 const features = map.queryRenderedFeatures(e.point);
 
-                const data = features.filter(l => l.layer.id === 'verified-class-4-roads')
+                const data = features.filter(l => l.layer.id === 'verified-class-4-medium')
 
                 // Print the features to the console
                 console.log(features);
@@ -393,36 +457,6 @@
             map.on('mouseleave', 'main', () => {
                 map.getCanvas().style.cursor = '';
             });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            //TEST LAYER
-            // map.addSource('test', {
-            //     'type': 'geojson',
-            //     'data': "data/VT.geojson",
-            // });
-
-            // // Add a black outline around the polygon.
-            // map.addLayer({
-            //     'id': 'test',
-            //     'type': 'line',
-            //     'source': 'test',
-            //     'paint': {
-            //         'line-color': 'red',
-            //         'line-width': 1
-            //     },
-            // });
 
         });
 
